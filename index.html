@@ -1170,6 +1170,14 @@
           gap: 28px;
         }
       }
+
+      /* mode papan fisik */
+      .nobd .stage {
+        justify-content: center;
+      }
+      .nobd .panel {
+        width: min(100%, 460px);
+      }
     </style>
   </head>
   <body>
@@ -2191,7 +2199,9 @@
           this.S = S;
           Board.N = (S.cfg && S.cfg.size) || 8;
           S.finishOrder = S.finishOrder || [];
+          const phys = S.cfg && S.cfg.board === false;
           $("#view").classList.toggle("preview", S.status === "preview");
+          $("#view").classList.toggle("nobd", !!phys);
           $("#view").innerHTML = `
       <header class="top">
         <div class="brand px">ULAR TANGGA</div>
@@ -2201,12 +2211,16 @@
         </div>
       </header>
       <div class="stage">
-        <div class="board-col">
+        ${
+          phys
+            ? ""
+            : `<div class="board-col">
           <div class="board-wrap" id="board-wrap">
             <div class="board" style="--n:${Board.N}">${Board.cellsHTML()}</div>${Board.fxSVG(S)}
             <div id="pawns">${S.students.map((s, i) => `<div class="pawn" data-i="${i}" title="${esc(s.name)}">${Sprite.html(s.color, Students.av(s))}</div>`).join("")}</div>
           </div>
-        </div>
+        </div>`
+        }
         <aside class="panel">
           <div class="turn" id="turn"></div>
           <button class="btn big" id="btn-roll" data-act="roll">LEMPAR DADU</button>
@@ -2333,7 +2347,7 @@
           $("#plist").innerHTML = S.students
             .map((s, i) => {
               const r = S.finishOrder.indexOf(s.id);
-              return `<div class="prow ${i === S.turn && playing ? "cur" : ""}"><span class="av">${Sprite.html(s.color, Students.av(s))}</span><span class="nm">${esc(s.name)}</span><span class="st">${s.stars || 0}${Pix.icon("star")}</span><span class="pos">${r >= 0 ? "Juara " + (r + 1) : s.pos || "Start"}</span></div>`;
+              return `<div class="prow ${i === S.turn && playing ? "cur" : ""}"><span class="av">${Sprite.html(s.color, Students.av(s))}</span><span class="nm">${esc(s.name)}</span><span class="st">${s.stars || 0}${Pix.icon("star")}</span><span class="pos">${S.cfg.board === false ? "" : r >= 0 ? "Juara " + (r + 1) : s.pos || "Start"}</span></div>`;
             })
             .join("");
           const rowCur = $("#plist .prow.cur");
@@ -2413,7 +2427,7 @@
           b.focus();
         },
 
-        /* langkah 3: tutup popup, pion berjalan */
+        /* langkah 3: tutup popup, pion berjalan (mode digital) lalu kartu misi */
         async go() {
           const S = this.S,
             vals = this._rolled;
@@ -2425,11 +2439,13 @@
             total = vals.reduce((a, b) => a + b, 0),
             idx = S.turn;
           if (n === 2 && vals[0] === vals[1]) S.extra = true;
-          await this.walk(idx, total);
-          await this.landed(idx);
-          const f = await this.checkFinish(idx);
-          if (f.over) return this.finish();
-          if (f.won) return this.endTurn();
+          if (S.cfg.board !== false) {
+            await this.walk(idx, total);
+            await this.landed(idx);
+            const f = await this.checkFinish(idx);
+            if (f.over) return this.finish();
+            if (f.won) return this.endTurn();
+          }
           const ci = Missions.draw(S);
           if (ci == null) {
             await sleep(500);
@@ -2600,7 +2616,7 @@
               emoji: "🏆",
               ms: 1200,
             });
-            if (S.cfg.bonus) {
+            if (S.cfg.bonus && S.cfg.board !== false) {
               await this.walk(idx, 2);
               await this.landed(idx);
               const f = await this.checkFinish(idx);
@@ -2612,7 +2628,7 @@
             Sound.bad();
             await UI.banner({
               title: "BELUM BENAR",
-              sub: p.pos > 0 ? "Mundur 1 kotak" : "",
+              sub: p.pos > 0 || S.cfg.board === false ? "Mundur 1 kotak" : "",
               kind: "bad",
               ms: 1100,
             });
@@ -2743,7 +2759,11 @@
         _edit: null,
 
         newDraft(level = "smp") {
-          return { students: [], cards: [], cfg: { ...PRESETS[level], level } };
+          return {
+            students: [],
+            cards: [],
+            cfg: { ...PRESETS[level], level, board: true },
+          };
         },
 
         clampCfg(cfg) {
@@ -2892,6 +2912,12 @@
               return syncMute();
             case "menu":
               return this.menu();
+            case "end-game":
+              return this.confirm(
+                "Akhiri permainan dan lihat peringkat?",
+                () => Game.finish(),
+                "AKHIRI",
+              );
 
             /* wizard */
             case "wz-cancel":
@@ -2982,7 +3008,7 @@
               this.pending = null;
               return this.lists();
             case "set-level":
-              L.cfg = { ...PRESETS[d.lv], level: d.lv };
+              L.cfg = { ...PRESETS[d.lv], level: d.lv, board: L.cfg.board };
               return this.renderWiz();
             case "cfg-step":
               L.cfg[d.k] = Math.max(
@@ -3086,6 +3112,7 @@
       <div class="box-b" style="display:flex;flex-direction:column;gap:12px">
         <button class="btn" data-act="close" data-focus>LANJUT MAIN</button>
         <button class="btn ghost" data-act="mute">${Sound.label()}</button>
+        ${Game.S && Game.S.cfg.board === false && Game.S.status === "playing" ? `<button class="btn red" data-act="end-game">AKHIRI PERMAINAN</button>` : ""}
         <button class="btn ghost" data-act="home">BERANDA</button>
       </div>`,
             { box: "sm" },
@@ -3148,20 +3175,21 @@
 
         step3() {
           const g = this.draft.cfg,
-            mx = g.size - 2;
+            phys = g.board === false;
           const chip = (k, v, label, extra = "") =>
             `<button class="chip ${g[k] === v ? "on" : ""}" data-act="cfg-set" data-k="${k}" data-v="${v}">${label}${extra}</button>`;
           const stp = (k, label) =>
             `<div class="setrow"><span>${label}</span><div class="stepper"><button class="btn sm" data-act="cfg-step" data-k="${k}" data-d="-1" aria-label="Kurangi">-</button><b>${g[k]}</b><button class="btn sm" data-act="cfg-step" data-k="${k}" data-d="1" aria-label="Tambah">+</button></div></div>`;
-          return `<div class="sec"><h3>JENJANG</h3><div class="chips levels">${LEVELS.map(([k, n, s]) => `<button class="chip ${g.level === k ? "on" : ""}" data-act="set-level" data-lv="${k}">${n}</button>`).join("")}</div></div>
-      <div class="sec"><h3>UKURAN PAPAN</h3><div class="chips sizes">${SIZES.map(([v, n, s]) => `<button class="chip ${g.size === v ? "on" : ""}" data-act="cfg-set" data-k="size" data-v="${v}">${n}</button>`).join("")}</div></div>
+          return `<div class="sec"><h3>MODE PAPAN</h3><div class="chips">${chip("board", true, "PAPAN DIGITAL")}${chip("board", false, "PAPAN FISIK")}</div></div>
+      <div class="sec"><h3>JENJANG</h3><div class="chips levels">${LEVELS.map(([k, n, s]) => `<button class="chip ${g.level === k ? "on" : ""}" data-act="set-level" data-lv="${k}">${n}</button>`).join("")}</div></div>
+      ${phys ? "" : `<div class="sec"><h3>UKURAN PAPAN</h3><div class="chips sizes">${SIZES.map(([v, n, s]) => `<button class="chip ${g.size === v ? "on" : ""}" data-act="cfg-set" data-k="size" data-v="${v}">${n}</button>`).join("")}</div></div>`}
       <div class="sec"><h3>DADU</h3><div class="chips">${chip("dice", 1, "1 DADU")}${chip("dice", 2, "2 DADU")}</div></div>
-      <div class="sec"><h3>ULAR &amp; TANGGA</h3>${stp("snakes", "Jumlah ular")}${stp("ladders", "Jumlah tangga")}</div>
+      ${phys ? "" : `<div class="sec"><h3>ULAR &amp; TANGGA</h3>${stp("snakes", "Jumlah ular")}${stp("ladders", "Jumlah tangga")}</div>`}
       <div class="sec"><h3>WAKTU MENJAWAB</h3><div class="chips">${chip("timer", 0, "TANPA")}${chip("timer", 15, "15 DTK")}${chip("timer", 30, "30 DTK")}${chip("timer", 60, "60 DTK")}</div></div>
       <div class="sec"><h3>ATURAN</h3><div class="chips">
         ${chip("bonus", true, "JIKA BENAR  +1 BINTANG &amp; MAJU 2 LANGKAH", "")}${chip("bonus", false, "JIKA BENAR  +1 BINTANG")}</div>
         <div class="chips mt">${chip("repeat", true, "KARTU DIULANG")}${chip("repeat", false, "KARTU SEKALI PAKAI")}</div>
-        <div class="chips mt">${chip("mode", "first", "SELESAI SAAT ADA PEMENANG")}${chip("mode", "all", "LANJUT SAMPAI SEMUA SELESAI")}</div></div>`;
+        ${phys ? "" : `<div class="chips mt">${chip("mode", "first", "SELESAI SAAT ADA PEMENANG")}${chip("mode", "all", "LANJUT SAMPAI SEMUA SELESAI")}</div>`}</div>`;
         },
 
         lists() {
@@ -3271,13 +3299,15 @@
           L.cfg.size = L.cfg.size || 8;
           this.clampCfg(L.cfg);
           Board.N = L.cfg.size;
-          let b;
-          try {
-            b = Board.generate(L.cfg.snakes, L.cfg.ladders);
-          } catch (e) {
-            return this.toast(
-              "Gagal membuat papan, kurangi jumlah ular/tangga.",
-            );
+          let b = { snakes: [], ladders: [] };
+          if (L.cfg.board !== false) {
+            try {
+              b = Board.generate(L.cfg.snakes, L.cfg.ladders);
+            } catch (e) {
+              return this.toast(
+                "Gagal membuat papan, kurangi jumlah ular/tangga.",
+              );
+            }
           }
           const now = Date.now();
           const S = {
@@ -3329,7 +3359,7 @@
       <div class="box-h"><span>PEMENANG!</span></div>
       <div class="box-b">
         <div class="podium">${order.join("")}</div>
-        <div class="rank-list">${R.map((r, i) => `<div class="row"><b>${i + 1}</b><span class="av">${Sprite.html(r.color, Students.av(r))}</span><span class="grow">${esc(r.name)}</span><span class="st">${st(r.stars)}</span><span>${r.finished ? "Finish" : "Kotak " + r.pos}</span></div>`).join("")}</div>
+        <div class="rank-list">${R.map((r, i) => `<div class="row"><b>${i + 1}</b><span class="av">${Sprite.html(r.color, Students.av(r))}</span><span class="grow">${esc(r.name)}</span><span class="st">${st(r.stars)}</span><span>${S.cfg.board === false ? "" : r.finished ? "Finish" : "Kotak " + r.pos}</span></div>`).join("")}</div>
       </div>
       <div class="box-f"><button class="btn ghost" data-act="home">BERANDA</button><button class="btn ghost" data-act="edit-setup">UBAH ATURAN</button><button class="btn good" data-act="again" data-focus>MAIN LAGI</button></div>`,
             { dismiss: false, box: "lg", cls: "result" },
