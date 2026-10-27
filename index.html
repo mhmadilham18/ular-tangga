@@ -3181,14 +3181,14 @@
           const stp = (k, label) =>
             `<div class="setrow"><span>${label}</span><div class="stepper"><button class="btn sm" data-act="cfg-step" data-k="${k}" data-d="-1" aria-label="Kurangi">-</button><b>${g[k]}</b><button class="btn sm" data-act="cfg-step" data-k="${k}" data-d="1" aria-label="Tambah">+</button></div></div>`;
           return `<div class="sec"><h3>MODE PAPAN</h3><div class="chips">${chip("board", true, "PAPAN DIGITAL")}${chip("board", false, "PAPAN FISIK")}</div></div>
-      <div class="sec"><h3>JENJANG</h3><div class="chips levels">${LEVELS.map(([k, n, s]) => `<button class="chip ${g.level === k ? "on" : ""}" data-act="set-level" data-lv="${k}">${n}</button>`).join("")}</div></div>
-      ${phys ? "" : `<div class="sec"><h3>UKURAN PAPAN</h3><div class="chips sizes">${SIZES.map(([v, n, s]) => `<button class="chip ${g.size === v ? "on" : ""}" data-act="cfg-set" data-k="size" data-v="${v}">${n}</button>`).join("")}</div></div>`}
-      <div class="sec"><h3>DADU</h3><div class="chips">${chip("dice", 1, "1 DADU")}${chip("dice", 2, "2 DADU")}</div></div>
-      ${phys ? "" : `<div class="sec"><h3>ULAR &amp; TANGGA</h3>${stp("snakes", "Jumlah ular")}${stp("ladders", "Jumlah tangga")}</div>`}
-      <div class="sec"><h3>WAKTU MENJAWAB</h3><div class="chips">${chip("timer", 0, "TANPA")}${chip("timer", 15, "15 DTK")}${chip("timer", 30, "30 DTK")}${chip("timer", 60, "60 DTK")}</div></div>
-      <div class="sec"><h3>ATURAN</h3><div class="chips">
-        ${chip("bonus", true, "JIKA BENAR  +1 BINTANG &amp; MAJU 2 LANGKAH", "")}${chip("bonus", false, "JIKA BENAR  +1 BINTANG")}</div>
-        <div class="chips mt">${chip("repeat", true, "KARTU DIULANG")}${chip("repeat", false, "KARTU SEKALI PAKAI")}</div>
+              <div class="sec"><h3>JENJANG</h3><div class="chips levels">${LEVELS.map(([k, n, s]) => `<button class="chip ${g.level === k ? "on" : ""}" data-act="set-level" data-lv="${k}">${n}</button>`).join("")}</div></div>
+              ${phys ? "" : `<div class="sec"><h3>UKURAN PAPAN</h3><div class="chips sizes">${SIZES.map(([v, n, s]) => `<button class="chip ${g.size === v ? "on" : ""}" data-act="cfg-set" data-k="size" data-v="${v}">${n}</button>`).join("")}</div></div>`}
+              <div class="sec"><h3>DADU</h3><div class="chips">${chip("dice", 1, "1 DADU")}${chip("dice", 2, "2 DADU")}</div></div>
+              ${phys ? "" : `<div class="sec"><h3>ULAR &amp; TANGGA</h3>${stp("snakes", "Jumlah ular")}${stp("ladders", "Jumlah tangga")}</div>`}
+              <div class="sec"><h3>WAKTU MENJAWAB</h3><div class="chips">${chip("timer", 0, "TANPA")}${chip("timer", 15, "15 DTK")}${chip("timer", 30, "30 DTK")}${chip("timer", 60, "60 DTK")}</div></div>
+              <div class="sec"><h3>ATURAN</h3><div class="chips">
+                ${chip("bonus", true, "JIKA BENAR  +1 BINTANG &amp; MAJU 2 LANGKAH", "")}${chip("bonus", false, "JIKA BENAR  +1 BINTANG")}</div>
+                <div class="chips mt">${chip("repeat", true, "KARTU DIULANG")}${chip("repeat", false, "KARTU SEKALI PAKAI")}</div>
         ${phys ? "" : `<div class="chips mt">${chip("mode", "first", "SELESAI SAAT ADA PEMENANG")}${chip("mode", "all", "LANJUT SAMPAI SEMUA SELESAI")}</div>`}</div>`;
         },
 
@@ -3356,14 +3356,14 @@
           UI.clear();
           UI.push(
             `
-      <div class="box-h"><span>PEMENANG!</span></div>
-      <div class="box-b">
-        <div class="podium">${order.join("")}</div>
-        <div class="rank-list">${R.map((r, i) => `<div class="row"><b>${i + 1}</b><span class="av">${Sprite.html(r.color, Students.av(r))}</span><span class="grow">${esc(r.name)}</span><span class="st">${st(r.stars)}</span><span>${S.cfg.board === false ? "" : r.finished ? "Finish" : "Kotak " + r.pos}</span></div>`).join("")}</div>
-      </div>
-      <div class="box-f"><button class="btn ghost" data-act="home">BERANDA</button><button class="btn ghost" data-act="edit-setup">UBAH ATURAN</button><button class="btn good" data-act="again" data-focus>MAIN LAGI</button></div>`,
-            { dismiss: false, box: "lg", cls: "result" },
-          );
+          <div class="box-h"><span>PEMENANG!</span></div>
+          <div class="box-b">
+            <div class="podium">${order.join("")}</div>
+            <div class="rank-list">${R.map((r, i) => `<div class="row"><b>${i + 1}</b><span class="av">${Sprite.html(r.color, Students.av(r))}</span><span class="grow">${esc(r.name)}</span><span class="st">${st(r.stars)}</span><span>${S.cfg.board === false ? "" : r.finished ? "Finish" : "Kotak " + r.pos}</span></div>`).join("")}</div>
+          </div>
+          <div class="box-f"><button class="btn ghost" data-act="home">BERANDA</button><button class="btn ghost" data-act="edit-setup">UBAH ATURAN</button><button class="btn good" data-act="again" data-focus>MAIN LAGI</button></div>`,
+                { dismiss: false, box: "lg", cls: "result" },
+              );
           Fx.rain(60);
         },
       };
