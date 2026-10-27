@@ -933,7 +933,6 @@
         border: none;
         color: var(--muted);
         font: 700 13px var(--f);
-        /* text-decoration: underline; */
         cursor: pointer;
         padding: 6px;
       }
@@ -1052,6 +1051,10 @@
         width: 56px;
         height: 56px;
       }
+      .banner .bemoji {
+        font-size: 56px;
+        line-height: 1;
+      }
       .banner .bt {
         font-size: clamp(16px, 3vw, 24px);
       }
@@ -1129,6 +1132,69 @@
           transition-duration: 0.01ms !important;
         }
       }
+
+      /* popup lempar dadu */
+      .rollpop .box-b {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+      }
+      .dice-stage {
+        display: flex;
+        gap: 44px;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        padding: 36px 0 44px;
+        background: #191a20;
+        border: 3px solid var(--text);
+      }
+      .scene.big {
+        --d: 104px;
+        perspective: 800px;
+      }
+      .scene.big .face {
+        padding: 12px;
+        border-width: 4px;
+      }
+      .scene.idle {
+        animation: idle 0.9s steps(2) infinite;
+      }
+      @keyframes idle {
+        50% {
+          transform: translateY(-8px);
+        }
+      }
+      .scene.settled {
+        transform: scale(1.15);
+        transition: transform 0.3s;
+      }
+      .roll-res {
+        min-height: 84px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 10px;
+        font-size: 17px;
+        color: var(--muted);
+      }
+      .roll-num {
+        font-size: clamp(22px, 6vw, 34px);
+        color: var(--text);
+      }
+      .roll-sub {
+        font-size: 15px;
+      }
+      @media (max-width: 480px) {
+        .scene.big {
+          --d: 84px;
+        }
+        .dice-stage {
+          gap: 28px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -1140,7 +1206,6 @@
 
     <script>
       "use strict";
-
       const $ = (s, r = document) => r.querySelector(s);
       const esc = (t) =>
         String(t).replace(
@@ -1526,8 +1591,8 @@
         confirm(msg, cb, yes = "YA") {
           const ov = this.push(
             `<div class="box-h"><span>KONFIRMASI</span></div>
-              <div class="box-b"><p class="lead">${esc(msg)}</p></div>
-              <div class="box-f"><button class="btn ghost" data-act="c-no" data-focus>BATAL</button><button class="btn red" data-act="c-yes">${esc(yes)}</button></div>`,
+       <div class="box-b"><p class="lead">${esc(msg)}</p></div>
+       <div class="box-f"><button class="btn ghost" data-act="c-no" data-focus>BATAL</button><button class="btn red" data-act="c-yes">${esc(yes)}</button></div>`,
             { box: "sm" },
           );
           ov._cb = cb;
@@ -1542,11 +1607,18 @@
           clearTimeout(this._t);
           this._t = setTimeout(() => el.classList.add("hidden"), 2600);
         },
-        banner({ title, sub = "", kind = "info", icon = "", ms = 1100 }) {
+        banner({
+          title,
+          sub = "",
+          kind = "info",
+          icon = "",
+          emoji = "",
+          ms = 1100,
+        }) {
           return new Promise((res) => {
             const el = document.createElement("div");
             el.className = "banner " + kind;
-            el.innerHTML = `${icon ? Pix.icon(icon) : ""}<div class="px bt">${esc(title)}</div>${sub ? `<div class="bs">${esc(sub)}</div>` : ""}`;
+            el.innerHTML = `${emoji ? `<div class="bemoji">${emoji}</div>` : icon ? Pix.icon(icon) : ""}<div class="px bt">${esc(title)}</div>${sub ? `<div class="bs">${esc(sub)}</div>` : ""}`;
             $("#banners").appendChild(el);
             setTimeout(() => el.classList.add("out"), Math.max(0, ms - 250));
             setTimeout(() => {
@@ -1602,7 +1674,7 @@
           "#7ed957",
           "#b08968",
         ],
-        /* 10 warna x 4 karakter = 40 kombinasi */
+        /* 10 warna x 4 karakter = 40 kombinasi unik */
         av(s) {
           if (s.av != null) return s.av % AVATARS.length;
           const i = this.COLORS.indexOf(s.color);
@@ -1880,6 +1952,7 @@
           return h;
         },
 
+        /* --- gambar pixel: koordinat dikunci ke grid 2 satuan (viewBox 256), skala mengikuti ukuran papan --- */
         fxSVG(S) {
           const P = 2,
             snap = (v) => Math.round(v / P) * P,
@@ -2037,7 +2110,7 @@
       };
 
       const Dice = {
-        ang: [],
+        angs: {},
         PIPS: {
           1: [4],
           2: [0, 8],
@@ -2060,36 +2133,39 @@
         tf(x, y) {
           return `rotateX(-24deg) rotateY(-30deg) rotateX(${x}deg) rotateY(${y}deg)`;
         },
-        html(n) {
-          this.ang = Array.from({ length: n }, () => ({ x: 0, y: 0 }));
-          return this.ang
+        flat(x, y) {
+          return `rotateX(0deg) rotateY(0deg) rotateX(${x}deg) rotateY(${y}deg)`;
+        },
+        html(n, pre = "", cls = "", act = "roll") {
+          this.angs[pre] = Array.from({ length: n }, () => ({ x: 0, y: 0 }));
+          return this.angs[pre]
             .map(
               (_, i) =>
-                `<div class="scene" id="sc${i}" data-act="roll" title="Klik untuk melempar"><div class="cube" id="cube${i}" style="transform:${this.tf(0, 0)}">${[1, 2, 3, 4, 5, 6].map((v) => this.face(v)).join("")}</div><div class="dshadow"></div></div>`,
+                `<div class="scene ${cls}" id="${pre}sc${i}" data-act="${act}" title="Klik untuk melempar"><div class="cube" id="${pre}cube${i}" style="transform:${this.tf(0, 0)}">${[1, 2, 3, 4, 5, 6].map((v) => this.face(v)).join("")}</div><div class="dshadow"></div></div>`,
             )
             .join("");
         },
         nextAng(cur, t) {
           return Math.ceil((cur + 720 - t) / 360) * 360 + t;
         },
-        show(vals) {
+        show(vals, pre = "") {
           vals.forEach((v, i) => {
-            const cube = $("#cube" + i);
+            const cube = $("#" + pre + "cube" + i);
             if (!cube) return;
             const [tx, ty] = this.TARGET[v];
-            this.ang[i] = { x: tx, y: ty };
+            this.angs[pre][i] = { x: tx, y: ty };
             cube.style.transition = "none";
             cube.style.transform = this.tf(tx, ty);
           });
         },
-        async roll(vals) {
+        async roll(vals, pre = "") {
           const iv = setInterval(() => Sound.tick(), 110);
           vals.forEach((v, i) => {
-            const cube = $("#cube" + i),
-              sc = $("#sc" + i);
+            const cube = $("#" + pre + "cube" + i),
+              sc = $("#" + pre + "sc" + i);
             if (!cube) return;
             const [tx, ty] = this.TARGET[v],
-              a = this.ang[i];
+              a = this.angs[pre][i];
             a.x = this.nextAng(a.x + (i ? 180 : 0), tx);
             a.y = this.nextAng(a.y, ty);
             cube.style.transition = "";
@@ -2101,6 +2177,19 @@
           await sleep(reduce ? 50 : 1150);
           clearInterval(iv);
           Sound.thump();
+        },
+        /* luruskan dadu supaya sisi yang keluar menghadap penuh ke depan */
+        async settle(vals, pre = "") {
+          vals.forEach((v, i) => {
+            const cube = $("#" + pre + "cube" + i),
+              sc = $("#" + pre + "sc" + i);
+            if (!cube) return;
+            const a = this.angs[pre][i];
+            cube.style.transition = "transform .45s ease-out";
+            cube.style.transform = this.flat(a.x, a.y);
+            sc.classList.add("settled");
+          });
+          await sleep(reduce ? 20 : 600);
         },
       };
 
@@ -2150,7 +2239,6 @@
         <div class="board-col">
           <div class="board-wrap" id="board-wrap">
             <div class="board" style="--n:${Board.N}">${Board.cellsHTML()}</div>${Board.fxSVG(S)}
-          
             <div id="pawns">${S.students.map((s, i) => `<div class="pawn" data-i="${i}" title="${esc(s.name)}">${Sprite.html(s.color, Students.av(s))}</div>`).join("")}</div>
           </div>
         </div>
@@ -2187,7 +2275,7 @@
           } else this.update();
         },
 
-        /* posisi + ukuran pion; menyesuaikan jumlah pemain di satu kotak   */
+        /* posisi + ukuran pion; menyesuaikan jumlah pemain di satu kotak (sampai 40) */
         layout() {
           const S = this.S,
             N = Board.N,
@@ -2299,7 +2387,8 @@
         },
 
         /* ---------- alur giliran ---------- */
-        async roll() {
+        /* langkah 1: popup giliran + dadu raksasa */
+        roll() {
           const S = this.S;
           if (
             !S ||
@@ -2311,26 +2400,80 @@
             return;
           this.busy = true;
           this.update();
+          this.openRoll();
+        },
+
+        openRoll() {
+          const S = this.S,
+            p = this.cur(),
+            n = S.cfg.dice || 1;
+          this._rolled = null;
+          this._rolling = false;
+          UI.push(
+            `
+      <div class="box-h"><span>GILIRAN</span></div>
+      <div class="box-b roll-b">
+        <span class="who-chip">${Sprite.html(p.color, Students.av(p))}${esc(p.name)}</span>
+        <div class="dice-stage" id="rstage">${Dice.html(n, "r", "big idle", "pop-roll")}</div>
+        <div class="roll-res" id="rres">Klik dadu untuk melempar</div>
+      </div>
+      <div class="box-f" id="rfoot"><button class="btn big" data-act="pop-roll" data-focus>LEMPAR DADU</button></div>`,
+            { dismiss: false, box: "sm", cls: "rollpop" },
+          );
+        },
+
+        /* langkah 2: dadu dilempar, hasil ditampilkan jelas */
+        async doRoll() {
+          const S = this.S;
+          if (
+            !S ||
+            this._rolling ||
+            this._rolled ||
+            S.phase !== "roll" ||
+            !$("#rstage")
+          )
+            return;
+          this._rolling = true;
           const n = S.cfg.dice || 1,
             vals = Array.from({ length: n }, () => rnd(1, 6));
-          await Dice.roll(vals);
+          document
+            .querySelectorAll("#rstage .scene")
+            .forEach((e) => e.classList.remove("idle"));
+          $("#rres").textContent = "Melempar...";
+          const b = $("#rfoot button");
+          b.disabled = true;
+          await Dice.roll(vals, "r");
+          await Dice.settle(vals, "r");
+          const total = vals.reduce((a, c) => a + c, 0),
+            dbl = n === 2 && vals[0] === vals[1];
+          $("#rres").innerHTML =
+            `<div class="px roll-num">${n > 1 ? vals.join(" + ") + " = " + total : total}</div><div class="roll-sub">Maju ${total} kotak</div>${dbl ? '<div class="roll-sub">DADU KEMBAR! Main lagi nanti</div>' : ""}`;
+          dbl ? Sound.good() : Sound.pop();
+          this._rolled = vals;
+          this._rolling = false;
+          b.disabled = false;
+          b.dataset.act = "pop-go";
+          b.textContent = "LANJUT JALAN";
+          b.focus();
+        },
+
+        /* langkah 3: tutup popup, pion berjalan */
+        async go() {
+          const S = this.S,
+            vals = this._rolled;
+          if (!vals || S.phase !== "roll") return;
+          this._rolled = null;
+          UI.pop();
           S.dice = vals;
-          const total = vals.reduce((a, b) => a + b, 0),
+          Dice.show(vals);
+          const n = vals.length,
+            total = vals.reduce((a, b) => a + b, 0),
             idx = S.turn,
             p = S.students[idx];
           this.log(
             `${p.name} melempar ${vals.join(" + ")}${n > 1 ? " = " + total : ""}`,
           );
-          if (n === 2 && vals[0] === vals[1]) {
-            S.extra = true;
-            Sound.good();
-            await UI.banner({
-              title: "DADU KEMBAR!",
-              sub: "Nanti main lagi",
-              kind: "win",
-              ms: 1100,
-            });
-          }
+          if (n === 2 && vals[0] === vals[1]) S.extra = true;
           await this.walk(idx, total);
           await this.landed(idx);
           const f = await this.checkFinish(idx);
@@ -2504,7 +2647,7 @@
               title: "BENAR!",
               sub: S.cfg.bonus ? "+1 bintang dan maju 2 kotak" : "+1 bintang",
               kind: "good",
-              icon: "star",
+              emoji: "🏆",
               ms: 1200,
             });
             if (S.cfg.bonus) {
@@ -2517,7 +2660,19 @@
           } else {
             Storage.save(S);
             Sound.bad();
-            await UI.banner({ title: "BELUM BENAR", kind: "bad", ms: 1100 });
+            await UI.banner({
+              title: "BELUM BENAR",
+              sub: p.pos > 0 ? "Mundur 1 kotak" : "",
+              kind: "bad",
+              ms: 1100,
+            });
+            if (p.pos > 0) {
+              p.pos -= 1;
+              Sound.step();
+              this.place(idx);
+              await sleep(reduce ? 30 : 300);
+              Storage.save(S);
+            }
           }
           this.endTurn();
         },
@@ -2909,6 +3064,10 @@
             /* game */
             case "roll":
               return Game.roll();
+            case "pop-roll":
+              return Game.doRoll();
+            case "pop-go":
+              return Game.go();
             case "show-ans":
               $("#ans").classList.remove("hidden");
               Sound.pop();
